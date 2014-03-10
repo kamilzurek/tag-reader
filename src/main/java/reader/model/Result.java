@@ -14,11 +14,16 @@
 * limitations under the License.
 */
 
-package reader.count;
+package reader.model;
+
+import java.util.Collection;
 
 /**
- * Abstraction of counting number of returned elements from stream.
+ * Abstraction of result from stream
  */
-public interface Counter {
-    public boolean check(int count);
+public interface Result<T, E> {
+    T get(E key);
+    void add(E key, T value);
+    Result<T, E> addAll(Result<T, E> result);
+    Collection<E> getAll();
 }

@@ -14,11 +14,12 @@
 * limitations under the License.
 */
 
-package reader.count;
+package reader.reduce;
 
 /**
- * Abstraction of counting number of returned elements from stream.
+ * Reducer for XML stream extending abstract {@link Reducer}.<br/>
+ *
  */
-public interface Counter {
-    public boolean check(int count);
+public interface XmlReducer<T, E> extends Reducer<T, E> {
+    Reducer<T, E> setToXml(boolean toXml);
 }

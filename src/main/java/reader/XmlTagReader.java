@@ -1,15 +1,32 @@
+/*
+* Copyright 2014 - Kamil Zurek
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
 package reader;
 
-import reader.count.Counter;
 import reader.count.impl.AllCounter;
 import reader.count.impl.FirstCounter;
 import reader.count.impl.OnlyCounter;
 import reader.filter.AbstractFilter;
 import reader.filter.tag.TagFilter;
+import reader.model.Result;
+import reader.model.XmlResult;
 import reader.predicate.impl.NamespacePredicate;
 import reader.predicate.impl.TagNamePredicate;
 import reader.predicate.impl.TagNameSelectivePredicate;
-import reader.reduce.Reducer;
+import reader.reduce.XmlReducer;
 import reader.reduce.impl.ContentReducer;
 import reader.reduce.impl.WithChildrenReducer;
 
@@ -22,23 +39,37 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
-public class XmlTagReader extends AbstractReader<XMLStreamReader, String> {
+/**
+ * Extending {@link AbstractReader} with fluent interface.
+ * <p/>
+ * Below is example for usage:<br/>
+ * <pre>
+ *     new XmlTagReader().tag("xmlTagForSearch").namespace("withOptionalNamespace")
+ *                          .witchChildren("onlyThischildNode", "andThisNode")
+ *                          .first()
+ * </pre>
+ */
+
+public class XmlTagReader extends AbstractReader<XMLStreamReader, Result<String, String>> {
     private static final XMLInputFactory FACTORY;
-    private static final Reducer<XMLStreamReader, List<String>> DEFAULT_REDUCER =
+    private static final XmlReducer<XMLStreamReader, Result<String, String>> DEFAULT_REDUCER =
             new ContentReducer();
+
+    private boolean toXml;
 
     static {
         FACTORY = XMLInputFactory.newInstance();
         FACTORY.setProperty("http://java.sun.com/xml/stream/properties/report-cdata-event", Boolean.TRUE);
     }
 
-    public XmlTagReader(String xml) {
+    public XmlTagReader(final String xml) {
         this(xml, new TagFilter());
     }
 
     public XmlTagReader(final String xml, final AbstractFilter<XMLStreamReader, Boolean> filter) {
         super(xml);
         this.elementFilter = filter;
+        this.toXml = false;
     }
 
     public XmlTagReader tag(final String tagname) {
@@ -71,35 +102,46 @@ public class XmlTagReader extends AbstractReader<XMLStreamReader, String> {
         return this;
     }
 
-    public String firstText() throws XMLStreamException {
-        counter = new FirstCounter();
-        return apply().get(0);
+    public XmlTagReader addXmlTag() {
+        toXml = true;
+        return this;
     }
 
-    public List<String> all() throws XMLStreamException {
+    public Result<String, String> first() throws XMLStreamException {
+        counter = new FirstCounter();
+        List<Result<String, String>> content = apply();
+        return (content.isEmpty()) ? XmlResult.EMPTY_RESULT : content.get(0);
+    }
+
+    public List<Result<String, String>> all() throws XMLStreamException {
         counter = new AllCounter();
         return apply();
     }
 
-    public List<String> only(final int count) throws XMLStreamException {
+    public List<Result<String, String>> only(final int count) throws XMLStreamException {
         counter = new OnlyCounter(count);
-        return apply();
+        List<Result<String, String>> content = apply();
+        return (content.size() <= count) ? content : content.subList(0, count);
     }
 
     @Override
-    protected List<String> apply() throws XMLStreamException {
+    protected List<Result<String, String>> apply() throws XMLStreamException {
         checkInternals();
+        reducer.setToXml(toXml);
 
         StringReader xmlReader = new StringReader(xml);
         XMLStreamReader reader = FACTORY.createXMLStreamReader(xmlReader);
-        List<String> content = new LinkedList<String>();
+        List<Result<String, String>> content = new LinkedList<Result<String, String>>();
         int elementCounter = 0;
 
         while (reader.hasNext() && counter.check(elementCounter)) {
             reader.next();
             if (elementFilter.filter(reader)) {
-                content.addAll(reducer.reduce(reader));
-                elementCounter++;
+                Result<String, String> result = reducer.reduce(reader);
+                if (!result.getAll().isEmpty()) {
+                    content.add(result);
+                    elementCounter++;
+                }
             }
         }
 
