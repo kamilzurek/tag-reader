@@ -10,19 +10,19 @@ Basic Ecample
 ``` java
 ...
 String xml = "<start><output>Content</output></start>";
-Result<String, String> element = new XmlTagReader().tag("output").textContent().first();
+Result<String, String> element = new XmlTagReader(xml).tag("output").textContent().first();
 String content = element.get("output"); // "Content"
 
 ....
 String xml = "<start><output><errorCode>1</errorCode><errorDescription>SQL Exception</errorDescription></output></start>";
-List<Result<String, String>> elements = new XmlTagReader().tag("output").withChildren().first();
+List<Result<String, String>> elements = new XmlTagReader(xml).tag("output").withChildren().first();
 elements.get(0).get("errorCode"); //1
 elements.get(0).get("errorDescription"); //"SQL Exception"
 
 ....
 String xml = "<start><customer><name>Foo</name><id>1</id><restOfPersonalData>....</restOfPersonalData></customer>" + 
 				"<customer>Another Customer</customer></start>";
-List<Result<String, String>> elements = new XmlTagReader().tag("output").withChildren("name").first(); //return only name of first customer
+List<Result<String, String>> elements = new XmlTagReader(xml).tag("output").withChildren("name").first(); //return only name of first customer
 elements.get(0).get("name"); //"Foo"
 elements.get(0).get("id"); // ""
 elements.size(); // 1
